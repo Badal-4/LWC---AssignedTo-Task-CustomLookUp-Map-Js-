@@ -1,0 +1,85 @@
+
+public class CustomLookupLwcController {
+    // Method to fetch lookup search result   
+     /*@AuraEnabled(cacheable=true)
+     public static list<Contact> fetchLookupData(String searchKey) {    
+         
+        string sWildCardText = '%' + searchKey + '%';
+        List<contact> contactfromAccount = new List<Contact>();
+        Id ide = UserInfo.getUserId();
+        Id RecordTypeIdForIssuer= Schema.SObjectType.Contact.getRecordTypeInfosByDeveloperName().get('Issuer').getRecordTypeId();
+        User u = [Select id,ContactId,FirstName from User where id =: ide];
+
+    if(u.ContactId != null)
+    {
+        Contact conref = [Select id, AccountId from Contact where id=: u.ContactId];
+        Account acc = [Select id , RecordType.Name from Account where id =: conref.AccountId];
+        String recordtypename = '';
+
+        if (acc != null)
+        {
+            recordtypename = acc.RecordType.Name;
+        }
+
+        if(recordtypename == 'Issuer')
+        {
+            contactfromAccount = [Select id,Name from Contact where AccountID =: conref.AccountId and recordtypeid =: RecordTypeIdForIssuer and Name LIKE : sWildCardText and Status__c = 'Active'
+            ORDER BY FirstName ASC NULLS LAST ];
+            System.debug('contact-->'+contactfromAccount);
+           
+        }
+    }
+    return contactfromAccount;
+     }*/
+@AuraEnabled(cacheable=true)
+public static List<User>  fetchLookupData(String searchKey)
+{
+    Id ide = UserInfo.getUserId();
+    List<User> userReturnList = new List<User>();
+    Id RecordTypeIdForIssuer= Schema.SObjectType.Contact.getRecordTypeInfosByDeveloperName().get('Issuer').getRecordTypeId();
+    string sWildCardText = '%' + searchKey + '%';
+    User u = [Select id,ContactId,FirstName from User where id =: ide]; 
+    Map<Id,Contact> conMap = new Map<Id,Contact>();
+       
+    if(u.ContactId != null)
+    {
+        Contact conref = [Select id, AccountId from Contact where id=: u.ContactId];
+        Account acc = [Select id , RecordType.Name from Account where id =: conref.AccountId];
+        String recordtypename = '';
+
+        if (acc != null)
+        {
+            recordtypename = acc.RecordType.Name;
+        }
+        
+        if(recordtypename == 'Issuer')     
+        {
+            List<Contact> conList = [Select Id from Contact where AccountID =: conref.AccountId and recordtypeid =: RecordTypeIdForIssuer and Name LIKE : sWildCardText and Status__c = 'Active'];
+            System.debug('Contact List==>'+conList);
+            for(Contact con : conList)
+            {
+                conMap.put(con.Id,con);
+            }
+        }
+
+        userReturnList = [Select Id,Contact.Name,ContactId from User where ContactId IN : conMap.keySet() and 	IsActive = true];
+       
+    }
+        return userReturnList;
+   
+}
+     
+    
+    
+     // Method to fetch lookup default value 
+     @AuraEnabled
+     public static sObject fetchDefaultRecord(string recordId , string sObjectApiName) {
+         string sRecId = recordId;    
+         string sQuery = 'Select Id,Name From ' + sObjectApiName + ' Where Id = : sRecId LIMIT 1';
+         for (sObject obj: database.query(sQuery)) {
+             return obj;
+         }
+         return null;
+     }
+     
+ }
